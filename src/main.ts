@@ -50,11 +50,9 @@ const start = async (): Promise<void> => {
     const auditLogRepository = new TypeOrmAuditLogRepository(
       AppDataSource.getRepository(AuditLogEntity),
     );
-    const logEventsContainer = new LogEventsContainer(
-      auditLogRepository,
-      eventBus,
-    );
-    void logEventsContainer;
+
+    new LogEventsContainer(auditLogRepository, eventBus);
+
     const collectContainer = new CollectContainer(eventBus);
     let running = true;
 

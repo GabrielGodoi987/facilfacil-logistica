@@ -1,6 +1,6 @@
+import { AggregateRoot } from "../../shared/aggregate-root";
 import { CollectPriority } from "../enum/collect-priority.enum";
 import { CollectStatus } from "../enum/collect-status.enum";
-import { AggregateRoot } from "../../shared/aggregate-root";
 import { CollectCreatedEvent } from "../events/collect-created.event";
 import { CollectDeletedEvent } from "../events/collect-deleted.event";
 import { CollectStatusEvent } from "../events/collect-status.event";
@@ -52,11 +52,21 @@ export class Collect extends AggregateRoot {
     status: CollectStatus,
     createdAt: Date,
   ): Collect {
-    return new Collect(id, name, address, packages, priority, status, createdAt);
+    return new Collect(
+      id,
+      name,
+      address,
+      packages,
+      priority,
+      status,
+      createdAt,
+    );
   }
 
   public update(
-    data: Partial<Pick<Collect, "name" | "address" | "packages" | "priority" | "status">>,
+    data: Partial<
+      Pick<Collect, "name" | "address" | "packages" | "priority" | "status">
+    >,
   ): void {
     const previous = Collect.reconstitute(
       this.id,
@@ -85,7 +95,9 @@ export class Collect extends AggregateRoot {
       this.createdAt,
     );
 
-    this.addDomainEvent(new CollectUpdatedEvent({ id: this.id, previous, current }));
+    this.addDomainEvent(
+      new CollectUpdatedEvent({ id: this.id, previous, current }),
+    );
 
     if (data.status !== undefined && data.status !== previousStatus) {
       this.addDomainEvent(
@@ -97,6 +109,8 @@ export class Collect extends AggregateRoot {
       );
     }
   }
+
+  public changeStatus(newStatus: CollectStatus): void {}
 
   public markDeleted(): void {
     this.addDomainEvent(new CollectDeletedEvent({ id: this.id }));
