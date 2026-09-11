@@ -12,7 +12,9 @@
     "start": "node bin/main.js"
   },
   "dependencies": {
+    "bullmq": "^6.3.4",
     "dotenv": "^16.4.7",
+    "ioredis": "^5.11.1",
     "pg": "^8.13.1",
     "typeorm": "^0.3.20",
     "yup": "^1.7.1"
