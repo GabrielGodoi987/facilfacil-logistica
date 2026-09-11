@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { BaseEvent } from "../../../shared/event-bus/events/base-event";
-import { Collect } from "../entities/collect";
+import type { Collect } from "../entities/collect";
 
 export type CollectUpdatedPayload = {
   id: string;

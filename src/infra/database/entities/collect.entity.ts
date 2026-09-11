@@ -18,8 +18,8 @@ export class CollectEntity {
   @Column({ type: "text", nullable: false })
   address!: string;
 
-  @Column({ type: "text", nullable: false })
-  packages!: string;
+  @Column({ type: "int", nullable: false })
+  packages!: number;
 
   @Column({ type: "varchar", length: 20, nullable: false })
   priority!: CollectPriority;

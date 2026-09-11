@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { Repository } from "typeorm";
 import { Collect } from "../../../domain/collect/entities/collect";
 import { CollectStatus } from "../../../domain/collect/enum/collect-status.enum";
@@ -14,8 +15,13 @@ export class TypeOrmCollectRepository implements CollectRepository {
 
   async create(data: CreateCollectData): Promise<Collect> {
     const entity = this.repository.create({
-      ...data,
+      id: data.id ?? randomUUID(),
+      name: data.name,
+      address: data.address,
+      packages: data.packages,
+      priority: data.priority,
       status: data.status ?? CollectStatus.PENDING,
+      createdAt: data.createdAt ?? new Date(),
     });
 
     return this.toDomain(await this.repository.save(entity));
@@ -59,7 +65,7 @@ export class TypeOrmCollectRepository implements CollectRepository {
   }
 
   private toDomain(entity: CollectEntity): Collect {
-    return new Collect(
+    return Collect.reconstitute(
       entity.id,
       entity.name,
       entity.address,

@@ -2,10 +2,12 @@ import { stdin as input, stdout as output } from "process";
 import { createInterface } from "readline/promises";
 import * as yup from "yup";
 import { CollectContainer } from "./application/collect/collect.container";
+import { LogEventsContainer } from "./infra/consumers/log/log-events.container";
 import { AppDataSource } from "./infra/database/data-source";
-import { CollectEventsContainer } from "./infra/collect/collect-events.container";
-import { EventBus } from "./shared/event-bus/event-bus";
+import { AuditLogEntity } from "./infra/database/entities/audit-log.entity";
+import { TypeOrmAuditLogRepository } from "./infra/database/repositories/typeorm-audit-log.repository";
 import { pause } from "./presentation/helpers/terminal.helper";
+import { EventBus } from "./shared/event-bus/event-bus";
 
 const green = "\x1b[32m";
 const reset = "\x1b[0m";
@@ -27,6 +29,7 @@ const showMenu = (): void => {
   console.log("D. Atualizar coleta");
   console.log("E. Excluir coleta");
   console.log("F. Verificar conexao com o banco");
+  console.log("G. Listar logs de auditoria");
   console.log("X. Sair");
 };
 
@@ -34,7 +37,7 @@ const menuOptionSchema = yup
   .string()
   .trim()
   .uppercase()
-  .oneOf(["A", "B", "C", "D", "E", "F", "X"], "Escolha uma opcao valida.")
+  .oneOf(["A", "B", "C", "D", "E", "F", "G", "X"], "Escolha uma opcao valida.")
   .required("Escolha uma opcao.");
 
 const start = async (): Promise<void> => {
@@ -44,11 +47,15 @@ const start = async (): Promise<void> => {
     await AppDataSource.initialize();
 
     const eventBus = new EventBus();
-    const collectEventsContainer = new CollectEventsContainer(eventBus);
-    void collectEventsContainer;
-
-    const collectContainer = new CollectContainer();
-
+    const auditLogRepository = new TypeOrmAuditLogRepository(
+      AppDataSource.getRepository(AuditLogEntity),
+    );
+    const logEventsContainer = new LogEventsContainer(
+      auditLogRepository,
+      eventBus,
+    );
+    void logEventsContainer;
+    const collectContainer = new CollectContainer(eventBus);
     let running = true;
 
     while (running) {
@@ -60,27 +67,31 @@ const start = async (): Promise<void> => {
 
         switch (validOption) {
           case "A":
-            await collectContainer.createCollectController.execute(terminal);
+            await collectContainer.collectController.create(terminal);
             await pause(terminal);
             break;
           case "B":
-            await collectContainer.listCollectsController.execute(terminal);
+            await collectContainer.collectController.list(terminal);
             await pause(terminal);
             break;
           case "C":
-            await collectContainer.findCollectController.execute(terminal);
+            await collectContainer.collectController.findById(terminal);
             await pause(terminal);
             break;
           case "D":
-            await collectContainer.updateCollectController.execute(terminal);
+            await collectContainer.collectController.update(terminal);
             await pause(terminal);
             break;
           case "E":
-            await collectContainer.deleteCollectController.execute(terminal);
+            await collectContainer.collectController.delete(terminal);
             await pause(terminal);
             break;
           case "F":
             await collectContainer.checkConnectionController.execute(terminal);
+            await pause(terminal);
+            break;
+          case "G":
+            await collectContainer.listAuditLogsController.execute(terminal);
             await pause(terminal);
             break;
           case "X":

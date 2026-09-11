@@ -1,33 +1,31 @@
 import { AppDataSource } from "../../infra/database/data-source";
+import { AuditLogEntity } from "../../infra/database/entities/audit-log.entity";
 import { CollectEntity } from "../../infra/database/entities/collect.entity";
+import { TypeOrmAuditLogRepository } from "../../infra/database/repositories/typeorm-audit-log.repository";
 import { TypeOrmCollectRepository } from "../../infra/database/repositories/typeorm-collect.repository";
+import { EventBus } from "../../shared/event-bus/event-bus";
 import { CheckConnectionController } from "../../presentation/controllers/check-connection.controller";
-import { CreateCollectController } from "../../presentation/controllers/create-collect.controller";
-import { DeleteCollectController } from "../../presentation/controllers/delete-collect.controller";
-import { FindCollectController } from "../../presentation/controllers/find-collect.controller";
-import { ListCollectsController } from "../../presentation/controllers/list-collects.controller";
-import { UpdateCollectController } from "../../presentation/controllers/update-collect.controller";
+import { CollectController } from "../../presentation/controllers/collect.controller";
+import { ListAuditLogsController } from "../../presentation/controllers/list-audit-logs.controller";
 import { CollectService } from "./collect.service";
 
 export class CollectContainer {
-  public readonly createCollectController: CreateCollectController;
-  public readonly listCollectsController: ListCollectsController;
-  public readonly findCollectController: FindCollectController;
-  public readonly updateCollectController: UpdateCollectController;
-  public readonly deleteCollectController: DeleteCollectController;
+  public readonly collectController: CollectController;
+  public readonly listAuditLogsController: ListAuditLogsController;
   public readonly checkConnectionController: CheckConnectionController;
 
-  constructor() {
+  constructor(private readonly eventBus: EventBus) {
     const repository = new TypeOrmCollectRepository(
       AppDataSource.getRepository(CollectEntity),
     );
-    const collectService = new CollectService(repository);
+    const collectService = new CollectService(repository, this.eventBus);
 
-    this.createCollectController = new CreateCollectController(collectService);
-    this.listCollectsController = new ListCollectsController(collectService);
-    this.findCollectController = new FindCollectController(collectService);
-    this.updateCollectController = new UpdateCollectController(collectService);
-    this.deleteCollectController = new DeleteCollectController(collectService);
+    const auditLogRepository = new TypeOrmAuditLogRepository(
+      AppDataSource.getRepository(AuditLogEntity),
+    );
+
+    this.collectController = new CollectController(collectService);
+    this.listAuditLogsController = new ListAuditLogsController(auditLogRepository);
     this.checkConnectionController = new CheckConnectionController();
   }
 }

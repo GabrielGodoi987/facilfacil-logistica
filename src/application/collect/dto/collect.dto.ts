@@ -1,12 +1,11 @@
 import * as yup from "yup";
-import { Collect } from "../../../domain/collect/entities/collect";
 import { CollectPriority } from "../../../domain/collect/enum/collect-priority.enum";
 import { CollectStatus } from "../../../domain/collect/enum/collect-status.enum";
 
 export interface CreateCollectDto {
   name: string;
   address: string;
-  packages: string;
+  packages: number;
   priority: CollectPriority;
   status?: CollectStatus;
 }
@@ -14,7 +13,7 @@ export interface CreateCollectDto {
 export interface UpdateCollectDto {
   name?: string;
   address?: string;
-  packages?: string;
+  packages?: number;
   priority?: CollectPriority;
   status?: CollectStatus;
 }
@@ -28,7 +27,15 @@ export interface PaginationDto {
   limit: number;
 }
 
-export interface CollectResponseDto extends Collect {}
+export interface CollectResponseDto {
+  id: string;
+  name: string;
+  address: string;
+  packages: number;
+  priority: CollectPriority;
+  status: CollectStatus;
+  createdAt: Date;
+}
 
 export interface CollectPaginationResponseDto {
   items: CollectResponseDto[];
@@ -49,7 +56,12 @@ export const createCollectSchema: yup.ObjectSchema<CreateCollectDto> = yup
   .object({
     name: yup.string().trim().required("Nome e obrigatorio.").max(100),
     address: yup.string().trim().required("Endereco e obrigatorio."),
-    packages: yup.string().trim().required("Pacotes e obrigatorio."),
+    packages: yup
+      .number()
+      .integer("Pacotes deve ser um número inteiro.")
+      .typeError("Pacotes deve ser um número inteiro.")
+      .min(1, "Pacotes deve ser maior que 0.")
+      .required("Pacotes e obrigatorio."),
     priority: yup
       .mixed<CollectPriority>()
       .oneOf(priorityValues, "Prioridade invalida.")
@@ -65,7 +77,12 @@ export const updateCollectSchema: yup.ObjectSchema<UpdateCollectDto> = yup
   .object({
     name: yup.string().trim().max(100).optional(),
     address: yup.string().trim().optional(),
-    packages: yup.string().trim().optional(),
+    packages: yup
+      .number()
+      .integer("Pacotes deve ser um número inteiro.")
+      .typeError("Pacotes deve ser um número inteiro.")
+      .min(1, "Pacotes deve ser maior que 0.")
+      .optional(),
     priority: yup
       .mixed<CollectPriority>()
       .oneOf(priorityValues, "Prioridade invalida.")
@@ -98,7 +115,7 @@ export const collectResponseSchema: yup.ObjectSchema<CollectResponseDto> = yup
     id: yup.string().uuid().required(),
     name: yup.string().required(),
     address: yup.string().required(),
-    packages: yup.string().required(),
+    packages: yup.number().integer().min(1).required(),
     priority: yup.mixed<CollectPriority>().oneOf(priorityValues).required(),
     status: yup.mixed<CollectStatus>().oneOf(statusValues).required(),
     createdAt: yup.date().required(),

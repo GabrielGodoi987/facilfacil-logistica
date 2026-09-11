@@ -1,4 +1,8 @@
+import { randomUUID } from "crypto";
+import { Collect } from "../../domain/collect/entities/collect";
+import { CollectStatus } from "../../domain/collect/enum/collect-status.enum";
 import { CollectRepository } from "../../domain/collect/repositories/collect.repository";
+import { EventBus } from "../../shared/event-bus/event-bus";
 import {
   CollectPaginationResponseDto,
   collectPaginationResponseSchema,
@@ -17,16 +21,40 @@ import {
 } from "./dto/collect.dto";
 
 export class CollectService {
-  constructor(private readonly collectRepository: CollectRepository) {}
+  constructor(
+    private readonly collectRepository: CollectRepository,
+    private readonly eventBus: EventBus,
+  ) {}
 
   async create(data: CreateCollectDto): Promise<CollectResponseDto> {
     const validData = await createCollectSchema.validate(data, {
       abortEarly: false,
       stripUnknown: true,
     });
-    const collect = await this.collectRepository.create(validData);
 
-    return collectResponseSchema.validate(collect, {
+    const collect = Collect.create(
+      randomUUID(),
+      validData.name,
+      validData.address,
+      validData.packages,
+      validData.priority,
+      validData.status ?? CollectStatus.PENDING,
+    );
+
+    const saved = await this.collectRepository.create({
+      id: collect.id,
+      name: collect.name,
+      address: collect.address,
+      packages: collect.packages,
+      priority: collect.priority,
+      status: collect.status,
+      createdAt: collect.createdAt,
+    });
+
+    const events = collect.pullDomainEvents();
+    events.forEach((event) => this.eventBus!.publish(event));
+
+    return collectResponseSchema.validate(saved, {
       abortEarly: false,
     });
   }
@@ -79,20 +107,33 @@ export class CollectService {
       abortEarly: false,
       stripUnknown: true,
     });
+
     const validData = await updateCollectSchema.validate(data, {
       abortEarly: false,
       stripUnknown: true,
     });
-    const collect = await this.collectRepository.update(
+
+    const existing = await this.collectRepository.findById(validSearch.id);
+
+    if (!existing) {
+      return null;
+    }
+
+    existing.update(validData);
+
+    const updated = await this.collectRepository.update(
       validSearch.id,
       validData,
     );
 
-    if (!collect) {
+    if (!updated) {
       return null;
     }
 
-    return collectResponseSchema.validate(collect, {
+    const events = existing.pullDomainEvents();
+    events.forEach((event) => this.eventBus!.publish(event));
+
+    return collectResponseSchema.validate(updated, {
       abortEarly: false,
     });
   }
@@ -102,12 +143,28 @@ export class CollectService {
       abortEarly: false,
       stripUnknown: true,
     });
-    const response = {
-      deleted: await this.collectRepository.delete(validData.id),
-    };
 
-    return deleteCollectResponseSchema.validate(response, {
-      abortEarly: false,
-    });
+    const existing = await this.collectRepository.findById(validData.id);
+
+    if (!existing) {
+      return deleteCollectResponseSchema.validate(
+        { deleted: false },
+        { abortEarly: false },
+      );
+    }
+
+    existing.markDeleted();
+
+    const deleted = await this.collectRepository.delete(validData.id);
+
+    if (deleted) {
+      const events = existing.pullDomainEvents();
+      events.forEach((event) => this.eventBus!.publish(event));
+    }
+
+    return deleteCollectResponseSchema.validate(
+      { deleted },
+      { abortEarly: false },
+    );
   }
 }

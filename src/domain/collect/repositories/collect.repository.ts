@@ -3,9 +3,10 @@ import { CollectPriority } from "../enum/collect-priority.enum";
 import { CollectStatus } from "../enum/collect-status.enum";
 
 export interface CreateCollectData {
+  id?: string;
   name: string;
   address: string;
-  packages: string;
+  packages: number;
   priority: CollectPriority;
   status?: CollectStatus;
   createdAt?: Date;
@@ -14,7 +15,7 @@ export interface CreateCollectData {
 export interface UpdateCollectData {
   name?: string;
   address?: string;
-  packages?: string;
+  packages?: number;
   priority?: CollectPriority;
   status?: CollectStatus;
 }
