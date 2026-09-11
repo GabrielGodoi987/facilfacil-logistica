@@ -1,17 +1,17 @@
 # Easy Easy Logistic — facilFacil-logística
 
-Aplicação interativa de terminal em **Node.js + TypeScript + TypeORM + PostgreSQL + BullMQ** para gestão de coletas.
+Aplicação interativa de terminal em **Node.js + TypeScript + TypeORM + PostgreSQL** para gestão de coletas.
 
 ## Resumo Operacional
 
 | Item | Detalhe |
 |------|---------|
-| **Stack** | Node 20+, TypeScript 5, TypeORM 0.3, PostgreSQL 16, Redis 7, BullMQ 6, Yup |
+| **Stack** | Node 20+, TypeScript 5, TypeORM 0.3, PostgreSQL 16, Yup |
 | **Entrada** | `src/main.ts` → `bin/main.js` (menu CLI) |
 | **Banco** | `AppDataSource` (`src/infra/database/data-source.ts`) com `migrationsRun: true` |
 | **Entidades** | `collect` e `audit_logs` (`src/infra/database/entities/`) |
-| **Auditoria** | Tabela `audit_logs` criada via migration — sem triggers/functions |
-| **Fila** | `collectQueue` em `src/shared/queue/bullmq.ts` (Redis) |
+| **Auditoria** | Tabela `audit_logs` criada via migration — sem triggers/functions; domínio em `src/domain/audit/` |
+| **Eventos** | `EventBus` síncrono em `src/shared/event-bus/event-bus.ts` (instanciado em `src/main.ts:190`) |
 | **Build** | `npm run build` → `dist/` |
 | **Execução** | `docker compose up -d` → `npm run build` → `npm start` |
 
@@ -92,7 +92,7 @@ CREATE INDEX "IDX_audit_logs_created_at" ON "audit_logs" ("created_at");
 
 Entidades:
 
-- Domínio: `src/domain/audit/entities/audit-log.ts` — `enum AuditAction { CREATE, UPDATE, DELETE, INSERT }` e `interface AuditLog`.
+- Domínio: `src/domain/audit/entities/audit-log.ts` — `class AuditLog` (tabela `audit_logs`) + `src/domain/audit/enum/audit-action.enum.ts` (`AuditAction`)
 - Infra: `src/infra/database/entities/audit-log.entity.ts` — `@Entity("audit_logs")` mapeada 1:1 com a tabela.
 
 Registrada em `src/infra/database/data-source.ts:13`:
@@ -137,7 +137,9 @@ docker exec -it easy-easy-logistic-postgres psql -U sa -d easy-easy-logistic -c 
 ## Coleta — Domínio e Aplicação
 
 ```
-src/domain/collect/entities/collect.ts          # Collect, CollectPriority, CollectStatus
+src/domain/collect/entities/collect.ts          # class Collect
+src/domain/collect/enum/collect-priority.enum.ts # enum CollectPriority
+src/domain/collect/enum/collect-status.enum.ts   # enum CollectStatus
 src/domain/collect/repositories/collect.repository.ts  # Contrato CollectRepository
 src/infra/database/entities/collect.entity.ts   # @Entity("collect")
 src/infra/database/repositories/typeorm-collect.repository.ts  # TypeOrmCollectRepository
@@ -153,16 +155,17 @@ src/application/collect/dto/collect.dto.ts      # DTOs + schemas Yup
 - `update({id}, data)` → `findOneBy` + `Object.assign` + `save`
 - `delete({id})` → `delete`
 
-## BullMQ
+## EventBus Síncrono
 
-`src/shared/queue/bullmq.ts` exporta:
+`src/shared/event-bus/event-bus.ts` declara:
 
 ```ts
-export const redisConnection = { host, port, maxRetriesPerRequest: null };
-export const collectQueue = new Queue("collect", { connection: redisConnection });
+export class EventBus {
+  // TODO: implementar publish/subscribe síncrono
+}
 ```
 
-Pronto para `collectQueue.add(...)` e workers dedicados.
+Instanciado em `src/main.ts:190` dentro de `start()` (`const eventBus = new EventBus()`).
 
 ## Estrutura do Projeto
 
@@ -170,18 +173,24 @@ Pronto para `collectQueue.add(...)` e workers dedicados.
 src/
   application/collect/       # Services e DTOs
   domain/
-    collect/                 # Entidades e contratos de domínio
-    audit/                   # Entidade de auditoria (AuditLog, AuditAction)
+    collect/
+      entities/collect.ts    # class Collect
+      enum/                  # collect-priority.enum.ts, collect-status.enum.ts
+      repositories/          # CollectRepository
+    audit/
+      entities/audit-log.ts  # class AuditLog (tabela audit_logs)
+      enum/audit-action.enum.ts
+      repositories/          # AuditLogRepository
   infra/database/
     entities/                # CollectEntity, AuditLogEntity
     repositories/            # TypeOrmCollectRepository
     migrations/              # 1710000000000-CreateAuditLogs.ts
     data-source.ts           # AppDataSource
-  shared/queue/              # BullMQ
-  main.ts                    # CLI interativo
+  shared/event-bus/          # EventBus síncrono
+  main.ts                    # CLI interativo (instancia EventBus)
 bin/main.js                  # Entrypoint (package.json: bin.main)
 dist/                        # Saída de npm run build
-docker-compose.yaml          # postgres:16-alpine + redis:7-alpine
+docker-compose.yaml          # postgres:16-alpine
 ```
 
 ## Configuração e Build

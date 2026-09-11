@@ -1,22 +1,14 @@
-export enum CollectPriority {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-}
+import { CollectPriority } from "../enum/collect-priority.enum";
+import { CollectStatus } from "../enum/collect-status.enum";
 
-export enum CollectStatus {
-  PENDING = "pending",
-  IN_PROGRESS = "in_progress",
-  COMPLETED = "completed",
-  CANCELED = "canceled",
-}
-
-export interface Collect {
-  id: string;
-  name: string;
-  address: string;
-  packages: string;
-  priority: CollectPriority;
-  status: CollectStatus;
-  createdAt: Date;
+export class Collect {
+  constructor(
+    public id: string,
+    public name: string,
+    public address: string,
+    public packages: string,
+    public priority: CollectPriority,
+    public status: CollectStatus,
+    public createdAt: Date,
+  ) {}
 }

@@ -1,8 +1,6 @@
 import { Repository } from "typeorm";
-import {
-  Collect,
-  CollectStatus,
-} from "../../../domain/collect/entities/collect";
+import { Collect } from "../../../domain/collect/entities/collect";
+import { CollectStatus } from "../../../domain/collect/enum/collect-status.enum";
 import {
   CollectPage,
   CollectRepository,
@@ -61,14 +59,14 @@ export class TypeOrmCollectRepository implements CollectRepository {
   }
 
   private toDomain(entity: CollectEntity): Collect {
-    return {
-      id: entity.id,
-      name: entity.name,
-      address: entity.address,
-      packages: entity.packages,
-      priority: entity.priority,
-      status: entity.status,
-      createdAt: entity.createdAt,
-    };
+    return new Collect(
+      entity.id,
+      entity.name,
+      entity.address,
+      entity.packages,
+      entity.priority,
+      entity.status,
+      entity.createdAt,
+    );
   }
 }

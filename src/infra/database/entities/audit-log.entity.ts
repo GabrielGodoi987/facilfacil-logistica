@@ -4,7 +4,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { AuditAction } from "../../../domain/audit/entities/audit-log";
+import { AuditAction } from "../../../domain/audit/enum/audit-action.enum";
 
 @Entity("audit_logs")
 export class AuditLogEntity {

@@ -1,4 +1,6 @@
-import { Collect, CollectPriority, CollectStatus } from "../entities/collect";
+import { Collect } from "../entities/collect";
+import { CollectPriority } from "../enum/collect-priority.enum";
+import { CollectStatus } from "../enum/collect-status.enum";
 
 export interface CreateCollectData {
   name: string;

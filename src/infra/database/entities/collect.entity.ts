@@ -4,10 +4,8 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import {
-  CollectPriority,
-  CollectStatus,
-} from "../../../domain/collect/entities/collect";
+import { CollectPriority } from "../../../domain/collect/enum/collect-priority.enum";
+import { CollectStatus } from "../../../domain/collect/enum/collect-status.enum";
 
 @Entity("collect")
 export class CollectEntity {
