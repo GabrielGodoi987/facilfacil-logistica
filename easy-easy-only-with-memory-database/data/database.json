@@ -1,3 +1,13 @@
 {
-  "collects": []
+  "collects": [
+    {
+      "id": "8070cd78-41e3-445c-9eb3-b32a4d275192",
+      "name": "xpto",
+      "address": "xpto",
+      "packages": 10,
+      "priority": "low",
+      "status": "completed",
+      "createdAt": "2026-09-11T20:20:28.350Z"
+    }
+  ]
 }
