@@ -1,0 +1,21 @@
+{
+  "name": "easy-easy-only-with-memory-database",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplicacao Node.js com TypeScript e JSON file database (sem ORM)",
+  "main": "dist/main.js",
+  "bin": {
+    "main": "bin/main.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node bin/main.js"
+  },
+  "dependencies": {
+    "yup": "^1.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,226 +1,85 @@
-# Easy Easy Logistic — facilFacil-logística
+# facilFacil-logistica
 
-Aplicação interativa de terminal em **Node.js + TypeScript + TypeORM + PostgreSQL** para gestão de coletas.
+Monorepo com duas implementações da mesma aplicação CLI de gestão de coletas:
 
-## Resumo Operacional
+- [`easy-easy-with-ORM/`](./easy-easy-with-ORM) — Node.js + TypeScript + **TypeORM + PostgreSQL** (com logs/auditoria)
+- [`easy-easy-only-with-memory-database/`](./easy-easy-only-with-memory-database) — Node.js + TypeScript + **Yup + JSON file database** (sem logs, apenas Yup + TS)
 
-| Item | Detalhe |
-|------|---------|
-| **Stack** | Node 20+, TypeScript 5, TypeORM 0.3, PostgreSQL 16, Yup |
-| **Entrada** | `src/main.ts` → `bin/main.js` (menu CLI) |
-| **Banco** | `AppDataSource` (`src/infra/database/data-source.ts`) com `migrationsRun: true` |
-| **Entidades** | `collect` e `audit_logs` (`src/infra/database/entities/`) |
-| **Auditoria** | Tabela `audit_logs` criada via migration — sem triggers/functions; domínio em `src/domain/audit/` |
-| **Eventos** | `EventBus` síncrono em `src/shared/event-bus/event-bus.ts` (instanciado em `src/main.ts:190`) |
-| **Build** | `npm run build` → `dist/` |
-| **Execução** | `docker compose up -d` → `npm run build` → `npm start` |
+## Estrutura
 
----
+```
+.
+├── easy-easy-with-ORM/              # Versão com ORM
+│   ├── src/
+│   │   ├── application/collect/
+│   │   ├── domain/{collect,audit}
+│   │   ├── infra/database/          # TypeORM + Postgres
+│   │   ├── presentation/controllers # inclui list-audit-logs
+│   │   └── main.ts                  # menu com G. Listar logs de auditoria
+│   ├── bin/main.js
+│   ├── package.json                 # dotenv, pg, typeorm, yup
+│   ├── tsconfig.json                # com decorators
+│   ├── docker-compose.yaml
+│   └── .env
+│
+└── easy-easy-only-with-memory-database/  # Versão JSON (sem logs)
+    ├── src/
+    │   ├── application/collect/
+    │   ├── domain/collect/          # sem audit
+    │   ├── infra/database/json-collect.repository.ts  # JSON .json
+    │   ├── presentation/controllers  # sem list-audit-logs
+    │   ├── data/database.json  -> ../data/database.json (na raiz do subprojeto)
+    │   └── main.ts                  # menu sem G (logs)
+    ├── data/database.json           # banco JSON
+    ├── bin/main.js
+    ├── package.json                 # apenas yup
+    └── tsconfig.json                # sem decorators
+```
 
-## Requisitos
+## easy-easy-with-ORM
 
-- Node.js 20 ou superior
-- npm
-- Docker com Docker Compose
-
-## Inicialização Rápida
+Stack: Node 20+, TypeScript 5, TypeORM 0.3, PostgreSQL 16, Yup
 
 ```bash
-# 1. Dependências
+cd easy-easy-with-ORM
 npm install
-
-# 2. Infra (Postgres + Redis)
 docker compose up -d
-
-# 3. Variáveis de ambiente (.env já com defaults)
 cat .env
-# DB_HOST=localhost
-# DB_PORT=5432
-# DB_NAME=easy-easy-logistic
-# DB_USER=sa
-# DB_PASSWORD=123
-# REDIS_HOST=localhost
-# REDIS_PORT=6379
-
-# 4. Build
 npm run build
-
-# 5. Menu interativo
 npm start
-# ou
-node bin/main.js
 ```
 
-O `AppDataSource.initialize()` executa automaticamente as migrations pendentes (`migrationsRun: true`), criando `audit_logs` se ainda não existir. Não é necessário rodar `typeorm migration:run` manualmente.
+Menu: A. Criar coleta | B. Listar | C. Buscar por ID | D. Atualizar | E. Excluir | **F. Verificar conexão** | **G. Listar logs de auditoria** | X. Sair
 
-## Opções do Menu
+## easy-easy-only-with-memory-database
 
-```
-A. Criar coleta
-B. Listar coletas com paginação
-C. Buscar coleta por ID
-D. Atualizar coleta
-E. Excluir coleta
-F. Verificar conexão com o banco
-X. Sair
-```
-
-- **A** solicita `nome`, `endereço`, `pacotes`, `prioridade` (`low`|`medium`|`high`) e `status` (`pending`|`in_progress`|`completed`|`canceled`, default `pending`).
-- **C/D/E** pedem UUID da coleta. Em **D**, pressione Enter para manter o valor atual.
-
-O executável de entrada continua sendo `bin/main.js`, registrado em `bin` do `package.json`.
-
-## Auditoria — `audit_logs`
-
-Tabela criada para registrar operações em `collect`. Escopo atual: **apenas criação da tabela**, sem triggers ou functions no banco.
-
-**Migration:** `src/infra/database/migrations/1710000000000-CreateAuditLogs.ts`
-
-```sql
-CREATE TABLE "audit_logs" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  "entity_name" varchar(100) NOT NULL,  -- ex: 'collect'
-  "entity_id" uuid NULL,                -- FK lógico para collect.id
-  "action" varchar(20) NOT NULL,        -- CREATE | UPDATE | DELETE
-  "old_data" jsonb NULL,
-  "new_data" jsonb NULL,
-  "created_at" timestamp NOT NULL DEFAULT now()
-);
-CREATE INDEX "IDX_audit_logs_entity" ON "audit_logs" ("entity_name", "entity_id");
-CREATE INDEX "IDX_audit_logs_created_at" ON "audit_logs" ("created_at");
-```
-
-Entidades:
-
-- Domínio: `src/domain/audit/entities/audit-log.ts` — `class AuditLog` (tabela `audit_logs`) + `src/domain/audit/enum/audit-action.enum.ts` (`AuditAction`)
-- Infra: `src/infra/database/entities/audit-log.entity.ts` — `@Entity("audit_logs")` mapeada 1:1 com a tabela.
-
-Registrada em `src/infra/database/data-source.ts:13`:
-
-```ts
-entities: [CollectEntity, AuditLogEntity],
-migrations: [__dirname + "/migrations/*.{ts,js}"],
-migrationsRun: true,
-```
-
-### Como consultar
-
-Via TypeORM:
-
-```ts
-const logs = await AppDataSource.getRepository(AuditLogEntity).find({
-  where: { entityName: 'collect' },
-  order: { createdAt: 'DESC' },
-});
-```
-
-Via SQL:
-
-```sql
--- Todas as entradas
-SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 20;
-
--- Por coleta
-SELECT action, old_data, new_data, created_at
-FROM audit_logs
-WHERE entity_name = 'collect' AND entity_id = 'SEU_UUID'
-ORDER BY created_at;
-```
-
-Verificação:
+Stack: **apenas** Node.js + Yup + TypeScript. Banco é um arquivo `.json` (`data/database.json`).
 
 ```bash
-docker exec -it easy-easy-logistic-postgres psql -U sa -d easy-easy-logistic -c "\d audit_logs"
-docker exec -it easy-easy-logistic-postgres psql -U sa -d easy-easy-logistic -c "SELECT * FROM audit_logs LIMIT 5;"
+cd easy-easy-only-with-memory-database
+npm install
+npm run build
+npm start
 ```
 
-## Coleta — Domínio e Aplicação
+Menu: A. Criar coleta | B. Listar | C. Buscar por ID | D. Atualizar | E. Excluir | F. Verificar conexão com o banco (JSON) | X. Sair
 
-```
-src/domain/collect/entities/collect.ts          # class Collect
-src/domain/collect/enum/collect-priority.enum.ts # enum CollectPriority
-src/domain/collect/enum/collect-status.enum.ts   # enum CollectStatus
-src/domain/collect/repositories/collect.repository.ts  # Contrato CollectRepository
-src/infra/database/entities/collect.entity.ts   # @Entity("collect")
-src/infra/database/repositories/typeorm-collect.repository.ts  # TypeOrmCollectRepository
-src/application/collect/collect.service.ts      # CollectService (injeção de CollectRepository)
-src/application/collect/dto/collect.dto.ts      # DTOs + schemas Yup
-```
+> Sem opção G e sem qualquer código de auditoria/logs. O repositório `JsonCollectRepository` (`src/infra/database/json-collect.repository.ts:27`) persiste em `data/database.json` com ordenação por `createdAt DESC` e paginação.
 
-`CollectService` centraliza validações Yup e delega ao repositório:
+### Exemplo do banco JSON
 
-- `create(data: CreateCollectDto)` → `collectRepository.create`
-- `findById({id})` → `findOneBy`
-- `findAll(page, limit)` → `findAndCount` com `order: {createdAt: "DESC"}`
-- `update({id}, data)` → `findOneBy` + `Object.assign` + `save`
-- `delete({id})` → `delete`
-
-## EventBus Síncrono
-
-`src/shared/event-bus/event-bus.ts` declara:
-
-```ts
-export class EventBus {
-  // TODO: implementar publish/subscribe síncrono
+```json
+{
+  "collects": [
+    {
+      "id": "uuid",
+      "name": "Coleta 1",
+      "address": "Rua A, 123",
+      "packages": 5,
+      "priority": "high",
+      "status": "pending",
+      "createdAt": "2026-09-11T10:00:00.000Z"
+    }
+  ]
 }
-```
-
-Instanciado em `src/main.ts:190` dentro de `start()` (`const eventBus = new EventBus()`).
-
-## Estrutura do Projeto
-
-```
-src/
-  application/collect/       # Services e DTOs
-  domain/
-    collect/
-      entities/collect.ts    # class Collect
-      enum/                  # collect-priority.enum.ts, collect-status.enum.ts
-      repositories/          # CollectRepository
-    audit/
-      entities/audit-log.ts  # class AuditLog (tabela audit_logs)
-      enum/audit-action.enum.ts
-      repositories/          # AuditLogRepository
-  infra/database/
-    entities/                # CollectEntity, AuditLogEntity
-    repositories/            # TypeOrmCollectRepository
-    migrations/              # 1710000000000-CreateAuditLogs.ts
-    data-source.ts           # AppDataSource
-  shared/event-bus/          # EventBus síncrono
-  main.ts                    # CLI interativo (instancia EventBus)
-bin/main.js                  # Entrypoint (package.json: bin.main)
-dist/                        # Saída de npm run build
-docker-compose.yaml          # postgres:16-alpine
-```
-
-## Configuração e Build
-
-```bash
-npm run build   # tsc → dist/
-npm start       # node bin/main.js
-```
-
-`AppDataSource` (`src/infra/database/data-source.ts:6`):
-
-```ts
-new DataSource({
-  type: "postgres",
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  username: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  entities: [CollectEntity, AuditLogEntity],
-  migrations: [__dirname + "/migrations/*.{ts,js}"],
-  synchronize: false,
-  migrationsRun: true,
-  logging: false,
-});
-```
-
-## Parar a Infra
-
-```bash
-docker compose down        # para containers
-docker compose down -v     # remove volumes (apaga dados de postgres_data/redis_data)
 ```

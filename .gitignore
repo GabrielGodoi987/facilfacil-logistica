@@ -1,3 +1,8 @@
 node_modules/
 dist/
 .env
+easy-easy-with-ORM/node_modules/
+easy-easy-with-ORM/dist/
+easy-easy-with-ORM/.env
+easy-easy-only-with-memory-database/node_modules/
+easy-easy-only-with-memory-database/dist/
